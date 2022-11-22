@@ -10,7 +10,11 @@
   },
   "author": "capucat",
   "license": "ISC",
-  "dependencies": {},
+  "dependencies": {
+    "@babylonjs/gui-editor": "^5.33.1",
+    "@babylonjs/materials": "^5.33.1",
+    "@babylonjs/serializers": "^5.33.1"
+  },
   "devDependencies": {
     "@babylonjs/core": "^5.18.0",
     "@babylonjs/gui": "^5.18.0",
