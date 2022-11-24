@@ -64,6 +64,9 @@ class App {
   private _camRoot: TransformNode
   private _yTilt: TransformNode
   public camera: UniversalCamera
+  deltaTime: number
+  moveDirection: Vector3
+  box: Mesh
 
   constructor() {
     this.canvas = this._createCanvas()
@@ -95,13 +98,47 @@ class App {
     engine.runRenderLoop(function () {
       scene.render()
     })
-    // scene.onBeforeRenderObservable.add(() => {
-    //   this.updateFromKeyboard()
-    // })
+    scene.onBeforeRenderObservable.add(() => {
+      this.updateFromKeyboard()
+    })
+    scene.registerBeforeRender(() => {
+      this.updateFromControls()
+      this.updateGroundDetection()
+      this.updateCamera()
+    })
+  }
+
+  private updateCamera(): void {
+    this._camRoot.position = Vector3.Lerp(
+      this._camRoot.position,
+      new Vector3(this.box.position.x, 0, this.box.position.z),
+      0.4
+    )
+  }
+
+  private updateGroundDetection(): void {
+    console.log(this.moveDirection)
+    this.box.moveWithCollisions(this.moveDirection)
+  }
+
+  private updateFromControls(): void {
+    this.deltaTime = this.scene.getEngine().getDeltaTime() / 1000.0
+
+    this.moveDirection = Vector3.Zero()
+
+    let fwd = this._camRoot.forward
+    let right = this._camRoot.right
+    let correctedVertical = fwd.scaleInPlace(this.vertical)
+    let correctedHorizontal = right.scaleInPlace(this.horizontal)
+    // console.log(fwd, right, correctedVertical, correctedHorizontal)
+
+    let move = correctedHorizontal.addInPlace(correctedVertical)
+    this.moveDirection = new Vector3(move.normalize().x, 0, move.normalize().z)
   }
 
   private setupObject() {
-    const box = MeshBuilder.CreateBox('box', {size: 2}, this.scene)
+    this.box = MeshBuilder.CreateBox('box', {size: 2}, this.scene)
+    this.box.moveWithCollisions(new Vector3(4, 0, 0))
   }
 
   private setupPlayerCamera(): UniversalCamera {
@@ -109,7 +146,7 @@ class App {
     this._camRoot = new TransformNode('root')
     this._camRoot.position = new Vector3(0, 0, 0) //initialized at (0,0,0)
     //to face the player from behind (180 degrees)
-    this._camRoot.rotation = new Vector3(0, Math.PI, 0)
+    // this._camRoot.rotation = new Vector3(0, Math.PI, 0)
 
     //rotations along the x-axis (up/down tilting)
     let yTilt = new TransformNode('ytilt')
