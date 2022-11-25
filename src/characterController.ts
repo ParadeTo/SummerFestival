@@ -244,7 +244,7 @@ export class Player extends TransformNode {
     let right = this._camRoot.right
     let correctedVertical = fwd.scaleInPlace(this._v)
     let correctedHorizontal = right.scaleInPlace(this._h)
-    console.log(fwd, right, correctedHorizontal, correctedVertical)
+    // console.log(fwd, right, correctedHorizontal, correctedVertical)
     //movement based off of camera's view
     let move = correctedHorizontal.addInPlace(correctedVertical)
 
@@ -446,7 +446,7 @@ export class Player extends TransformNode {
     if (!this._isGrounded()) {
       //if the body isnt grounded, check if it's on a slope and was either falling or walking onto it
       if (this._checkSlope() && this._gravity.y <= 0) {
-        console.log('slope')
+        // console.log('slope')
         //if you are considered on a slope, you're able to jump and gravity wont affect you
         this._gravity.y = 0
         this._jumpCount = 1

@@ -41,7 +41,7 @@ import {
   Control,
   Image,
 } from '@babylonjs/gui'
-
+import Axis from './drawAxis'
 //enum for states
 enum State {
   START = 0,
@@ -77,7 +77,9 @@ class App {
   private async init(): Promise<void> {
     const engine = (this.engine = new Engine(this.canvas))
     const scene = (this.scene = new Scene(engine))
-    const actionManager = new ActionManager(scene)
+    const actionManager = (scene.actionManager = new ActionManager(scene))
+
+    new Axis(scene)
 
     this.setupObject()
     // const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
@@ -117,7 +119,6 @@ class App {
   }
 
   private updateGroundDetection(): void {
-    console.log(this.moveDirection)
     this.box.moveWithCollisions(this.moveDirection)
   }
 
@@ -181,6 +182,8 @@ class App {
       this.horizontal = Scalar.Lerp(this.horizontal, -1, 0.2)
       this.horizontalAxis = -1
     } else if (this.inputMap['ArrowRight']) {
+      console.log(1)
+
       this.horizontal = Scalar.Lerp(this.horizontal, 1, 0.2)
       this.horizontalAxis = 1
     } else {
