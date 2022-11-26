@@ -82,7 +82,7 @@ class App {
     new Axis(scene)
 
     this.setupObject()
-    // const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
+    const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
     // camera.attachControl(this.canvas, true)
     this.setupPlayerCamera()
 
@@ -119,7 +119,9 @@ class App {
   }
 
   private updateGroundDetection(): void {
-    this.box.moveWithCollisions(this.moveDirection)
+    this.box.moveWithCollisions(
+      new Vector3(this.moveDirection.x * 0.5, 0, this.moveDirection.z * 0.5)
+    )
   }
 
   private updateFromControls(): void {
@@ -135,11 +137,29 @@ class App {
 
     let move = correctedHorizontal.addInPlace(correctedVertical)
     this.moveDirection = new Vector3(move.normalize().x, 0, move.normalize().z)
+
+    //check if there is movement to determine if rotation is needed
+    let input = new Vector3(this.horizontalAxis, 0, this.verticalAxis) //along which axis is the direction
+    if (input.length() == 0) {
+      //if there's no input detected, prevent rotation and keep player in same rotation
+      return
+    }
+    let angle = -Math.atan2(this.horizontalAxis, -this.verticalAxis)
+    // console.log(angle, this.horizontalAxis, this.verticalAxis)
+    // this.box.rotation.y = this.box.rotation.y + angle * 0.1
+    let targ = Quaternion.FromEulerAngles(0, angle, 0)
+    console.log(angle, targ, this.box.rotationQuaternion)
+    this.box.rotationQuaternion = Quaternion.Slerp(
+      this.box.rotationQuaternion || new Quaternion(),
+      targ,
+      10 * this.deltaTime
+    )
   }
 
   private setupObject() {
-    this.box = MeshBuilder.CreateBox('box', {size: 2}, this.scene)
-    this.box.moveWithCollisions(new Vector3(4, 0, 0))
+    var faceColors = new Array(6)
+    faceColors[1] = new Color4(1, 0, 0, 0.5)
+    this.box = MeshBuilder.CreateBox('box', {size: 2, faceColors}, this.scene)
   }
 
   private setupPlayerCamera(): UniversalCamera {
@@ -182,8 +202,6 @@ class App {
       this.horizontal = Scalar.Lerp(this.horizontal, -1, 0.2)
       this.horizontalAxis = -1
     } else if (this.inputMap['ArrowRight']) {
-      console.log(1)
-
       this.horizontal = Scalar.Lerp(this.horizontal, 1, 0.2)
       this.horizontalAxis = 1
     } else {
