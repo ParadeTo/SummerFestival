@@ -1,6 +1,6 @@
 import {CreateLines, Scene, Vector3, Color3, MeshBuilder} from '@babylonjs/core'
 
-const size = 2
+const size = 10
 export default class Axis {
   constructor(scene: Scene) {
     var pilot_local_axisX = CreateLines(
@@ -17,6 +17,7 @@ export default class Axis {
       scene
     )
     pilot_local_axisX.color = new Color3(1, 0, 0)
+    pilot_local_axisX.isPickable = false
 
     var pilot_local_axisY = CreateLines(
       'pilot_local_axisY',
@@ -32,6 +33,7 @@ export default class Axis {
       scene
     )
     pilot_local_axisY.color = new Color3(0, 1, 0)
+    pilot_local_axisY.isPickable = false
 
     var pilot_local_axisZ = CreateLines(
       'pilot_local_axisZ',
@@ -47,5 +49,6 @@ export default class Axis {
       scene
     )
     pilot_local_axisZ.color = new Color3(0, 0, 1)
+    pilot_local_axisZ.isPickable = false
   }
 }

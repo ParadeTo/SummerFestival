@@ -31,6 +31,10 @@ import {
   CreateBox,
   ArcRotateCamera,
   HemisphericLight,
+  Ray,
+  RayHelper,
+  GroundMesh,
+  StandardMaterial,
 } from '@babylonjs/core'
 import {
   AdvancedDynamicTexture,
@@ -50,6 +54,8 @@ enum State {
   CUTSCENE = 3,
 }
 
+const JUMP_FORCE = 0.3
+const GRAVITY = -8.8
 // App class is our entire game application
 class App {
   private scene: Scene
@@ -67,6 +73,10 @@ class App {
   deltaTime: number
   moveDirection: Vector3
   box: Mesh
+  jumpKeyDown: boolean
+  private _gravity: Vector3 = new Vector3()
+  _jumped: boolean
+  _isFalling: boolean
 
   constructor() {
     this.canvas = this._createCanvas()
@@ -80,6 +90,17 @@ class App {
     const actionManager = (scene.actionManager = new ActionManager(scene))
 
     new Axis(scene)
+
+    // Ground
+    const ground = MeshBuilder.CreateGround(
+      'ground',
+      {width: 1000000, height: 100000},
+      scene
+    )
+    const material = new StandardMaterial('myMaterial', scene)
+    material.diffuseColor = new Color3(0.2, 0.2, 0.2)
+    ground.material = material
+    ground.position.y = -0.5
 
     this.setupObject()
     const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
@@ -100,10 +121,9 @@ class App {
     engine.runRenderLoop(function () {
       scene.render()
     })
-    scene.onBeforeRenderObservable.add(() => {
-      this.updateFromKeyboard()
-    })
+    scene.onBeforeRenderObservable.add(() => {})
     scene.registerBeforeRender(() => {
+      this.updateFromKeyboard()
       this.updateFromControls()
       this.updateGroundDetection()
       this.updateCamera()
@@ -119,9 +139,76 @@ class App {
   }
 
   private updateGroundDetection(): void {
-    this.box.moveWithCollisions(
-      new Vector3(this.moveDirection.x * 0.5, 0, this.moveDirection.z * 0.5)
+    //if not grounded
+    if (!this._isGrounded()) {
+      //if the body isnt grounded, check if it's on a slope and was either falling or walking onto it
+      // if (this._checkSlope() && this._gravity.y <= 0) {
+      //   // console.log('slope')
+      //   //if you are considered on a slope, you're able to jump and gravity wont affect you
+      //   this._gravity.y = 0
+      //   this._jumpCount = 1
+      //   this._grounded = true
+      // } else {
+      //keep applying gravity
+      if (this._gravity.y > 0) {
+        this._gravity = this._gravity.addInPlace(
+          Vector3.Up().scale(this.deltaTime * GRAVITY)
+        )
+      }
+      // this._grounded = false
+      // }
+    }
+    console.log(this.moveDirection, this._gravity)
+    this.box.moveWithCollisions(this.moveDirection.addInPlace(this._gravity))
+
+    if (this._isGrounded()) {
+      this._gravity.y = 0
+    }
+
+    //Jump detection
+    if (this.jumpKeyDown) {
+      console.log(1)
+      this._gravity.y = JUMP_FORCE
+
+      this._jumped = true
+      this._isFalling = false
+    }
+  }
+  private _isGrounded() {
+    if (this._floorRaycast(0, 0, 0.5).equals(Vector3.Zero())) {
+      return false
+    } else {
+      return true
+    }
+  }
+  private _floorRaycast(
+    offsetx: number,
+    offsetz: number,
+    raycastlen: number
+  ): Vector3 {
+    //position the raycast from bottom center of mesh
+    let raycastFloorPos = new Vector3(
+      this.box.position.x,
+      this.box.position.y,
+      this.box.position.z
     )
+    let ray = new Ray(raycastFloorPos, Vector3.Up().scale(-1), raycastlen)
+    // const helper = new RayHelper(ray)
+    // helper.show(this.scene)
+    //defined which type of meshes should be pickable
+    let predicate = function (mesh) {
+      return mesh.isPickable && mesh.isEnabled()
+    }
+
+    let pick = this.scene.pickWithRay(ray, predicate)
+    console.log(pick)
+    if (pick.hit) {
+      //grounded
+      return pick.pickedPoint
+    } else {
+      //not grounded
+      return Vector3.Zero()
+    }
   }
 
   private updateFromControls(): void {
@@ -144,22 +231,29 @@ class App {
       //if there's no input detected, prevent rotation and keep player in same rotation
       return
     }
+
     let angle = -Math.atan2(this.horizontalAxis, -this.verticalAxis)
-    // console.log(angle, this.horizontalAxis, this.verticalAxis)
-    // this.box.rotation.y = this.box.rotation.y + angle * 0.1
-    let targ = Quaternion.FromEulerAngles(0, angle, 0)
-    console.log(angle, targ, this.box.rotationQuaternion)
-    this.box.rotationQuaternion = Quaternion.Slerp(
-      this.box.rotationQuaternion || new Quaternion(),
-      targ,
+    this.box.rotation.y = +Scalar.Lerp(
+      this.box.rotation.y,
+      angle,
       10 * this.deltaTime
     )
+
+    // let angle = -Math.atan2(this.horizontalAxis, -this.verticalAxis)
+    // let targ = Quaternion.FromEulerAngles(0, angle, 0)
+    // console.log(angle, targ, this.box.rotationQuaternion)
+    // this.box.rotationQuaternion = Quaternion.Slerp(
+    //   this.box.rotationQuaternion || new Quaternion(),
+    //   targ,
+    //   10 * this.deltaTime
+    // )
   }
 
   private setupObject() {
     var faceColors = new Array(6)
     faceColors[1] = new Color4(1, 0, 0, 0.5)
-    this.box = MeshBuilder.CreateBox('box', {size: 2, faceColors}, this.scene)
+    this.box = MeshBuilder.CreateBox('box', {size: 1, faceColors}, this.scene)
+    this.box.isPickable = false
   }
 
   private setupPlayerCamera(): UniversalCamera {
@@ -207,6 +301,13 @@ class App {
     } else {
       this.horizontal = 0
       this.horizontalAxis = 0
+    }
+
+    //Jump Checks (SPACE)
+    if (this.inputMap[' ']) {
+      this.jumpKeyDown = true
+    } else {
+      this.jumpKeyDown = false
     }
   }
 
